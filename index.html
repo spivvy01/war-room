@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DLTRS V100.2 - 幽靈戰機控制台</title>
+    <style>
+        @keyframes scan { 0% { top: -100%; } 100% { top: 100%; } }
+        @keyframes pulse { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
+        @keyframes blink { 0% { border-color: #00ff41; } 50% { border-color: transparent; } 100% { border-color: #00ff41; } }
+        
+        body { background: #000; color: #00ff41; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; position: relative; }
+        body::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none; }
+        .scanline { width: 100%; height: 100px; background: linear-gradient(0deg, rgba(0, 255, 65, 0) 0%, rgba(0, 255, 65, 0.2) 50%, rgba(0, 255, 65, 0) 100%); opacity: 0.1; position: absolute; bottom: 100%; animation: scan 4s linear infinite; }
+
+        .cockpit { width: 100vw; height: 100vh; border: 10px double #1a331a; box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; background: radial-gradient(circle, #051a05 0%, #000 100%); }
+        .header { text-align: center; font-size: 24px; letter-spacing: 5px; text-shadow: 0 0 10px #00ff41; border-bottom: 1px solid #00ff41; padding-bottom: 10px; }
+        
+        .input-zone { background: rgba(0, 255, 65, 0.05); border: 1px solid #00ff41; padding: 20px; text-align: center; }
+        .label { font-size: 12px; opacity: 0.7; margin-bottom: 5px; }
+        input { background: #000; border: 1px solid #00ff41; color: #00ff41; width: 80%; padding: 15px; font-size: 24px; text-align: center; margin-bottom: 15px; box-shadow: inset 0 0 5px #00ff41; }
+        button { background: #00ff41; color: #000; border: none; width: 85%; padding: 15px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:active { transform: scale(0.95); background: #008f11; }
+
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .data-box { border: 1px solid #1a331a; padding: 10px; background: rgba(0,0,0,0.5); }
+        .value { font-size: 22px; font-weight: bold; margin-top: 5px; }
+        
+        .alert-panel { height: 100px; border: 2px dashed #00ff41; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .active-alert { border: 2px solid #ff0000 !important; background: rgba(255, 0, 0, 0.2); animation: pulse 1s infinite; color: #ff0000; }
+        .active-alert #statusMsg { font-size: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="scanline"></div>
+    <div class="cockpit">
+        <div class="header">DLTRS V100.2 CORE</div>
+        
+        <div class="input-zone">
+            <div class="label">TARGET ATH LOCK (高點鎖定)</div>
+            <input type="number" id="athInput" value="30418">
+            <button onclick="updateTactical()">ENGAGE SYSTEM</button>
+        </div>
+
+        <div class="data-grid">
+            <div class="data-box"><div class="label">ATH</div><div id="curAth" class="value">30,418</div></div>
+            <div class="data-box"><div class="label">DROP %</div><div id="dropVal" class="value">--</div></div>
+        </div>
+
+        <div id="alertBox" class="alert-panel">
+            <div class="label" id="statusLabel">SYSTEM STATUS</div>
+            <div id="statusMsg">STANDBY</div>
+        </div>
+    </div>
+
+    <script>
+        function updateTactical() {
+            const ath = document.getElementById('athInput').value;
+            const price = 29416.75; // 固定回測價位
+            const drop = ((price - ath) / ath) * 100;
+            
+            document.getElementById('curAth').innerText = Number(ath).toLocaleString();
+            document.getElementById('dropVal').innerText = drop.toFixed(2) + "%";
+            
+            const alertBox = document.getElementById('alertBox');
+            const statusMsg = document.getElementById('statusMsg');
+            
+            if (drop <= -4) {
+                alertBox.className = "alert-panel active-alert";
+                statusMsg.innerText = "B-2 GHOST: READY";
+            } else {
+                alertBox.className = "alert-panel";
+                statusMsg.innerText = "AIRSPACE SECURE";
+            }
+        }
+    </script>
+</body>
+</html>
