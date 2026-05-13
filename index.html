@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DLTRS V300.0 - 雷達核心終端</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root { --main-green: #00ff41; --dim-green: rgba(0, 255, 65, 0.2); --alert-red: #ff003c; }
+        body { background: #020b02; color: var(--main-green); font-family: 'Share Tech Mono', monospace; margin: 0; overflow: hidden; }
+        
+        /* 核心佈局 */
+        .ui-container { height: 100vh; display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; position: relative; z-index: 10; }
+        
+        /* 頂部掃描條 */
+        .top-bar { border: 1px solid var(--main-green); padding: 5px 15px; display: flex; justify-content: space-between; background: rgba(0,20,0,0.8); margin-bottom: 10px; box-shadow: 0 0 10px var(--dim-green); }
+
+        /* 雷達畫布 */
+        #radar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; opacity: 0.6; }
+
+        /* 數據卡片區 */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .card { background: rgba(0, 15, 0, 0.9); border-left: 3px solid var(--main-green); padding: 10px; border-top: 1px solid var(--dim-green); }
+        .card-label { font-size: 10px; text-transform: uppercase; opacity: 0.8; margin-bottom: 5px; }
+        .card-value { font-size: 20px; font-weight: bold; text-shadow: 0 0 8px var(--main-green); }
+
+        /* 輸入控制區 */
+        .control-panel { background: rgba(0, 30, 0, 0.9); border: 1px dashed var(--main-green); padding: 15px; text-align: center; }
+        input { background: #000; border: 1px solid var(--main-green); color: var(--main-green); font-family: inherit; width: 120px; padding: 5px; text-align: center; font-size: 18px; margin-bottom: 10px; }
+        button { background: var(--main-green); color: #000; border: none; padding: 8px 20px; font-weight: bold; cursor: pointer; width: 100%; }
+
+        /* 警報閃爍 */
+        @keyframes alert-pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .critical { color: var(--alert-red); border-left-color: var(--alert-red); }
+        .critical .card-value { text-shadow: 0 0 8px var(--alert-red); animation: alert-pulse 0.5s infinite; }
+    </style>
+</head>
+<body>
+    <canvas id="radar-canvas"></canvas>
+    
+    <div class="ui-container">
+        <div class="top-bar">
+            <span>SYSTEM: DLTRS_V3.0</span>
+            <span id="clock">00:00:00</span>
+        </div>
+
+        <div class="stats-grid">
+            <div class="card">
+                <div class="card-label">1YR ATH Lock</div>
+                <div id="displayAth" class="card-value">30,418</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Live NQ Height</div>
+                <div id="livePrice" class="card-value">29,416.75</div>
+            </div>
+            <div id="dropCard" class="card">
+                <div class="card-label">Deviation %</div>
+                <div id="displayDrop" class="card-value">-3.29%</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Signal Status</div>
+                <div id="signalStatus" class="card-value" style="font-size: 14px;">SCANNING...</div>
+            </div>
+        </div>
+
+        <div style="flex: 1;"></div> <div class="control-panel">
+            <div style="font-size: 10px; margin-bottom: 5px;">MANUAL OVERRIDE (手動設定高點)</div>
+            <input type="number" id="athInput" value="30418">
+            <button onclick="lockSystem()">ENGAGE COMMAND</button>
+        </div>
+    </div>
+
+    <script>
+        // 雷達動畫邏輯
+        const canvas = document.getElementById('radar-canvas');
+        const ctx = canvas.getContext('2d');
+        let angle = 0;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function drawRadar() {
+            ctx.fillStyle = 'rgba(2, 11, 2, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 1.5;
+            const radius = canvas.width * 0.8;
+
+            // 畫掃描線
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, angle, angle + 0.2);
+            ctx.lineTo(centerX, centerY);
+            ctx.fillStyle = 'rgba(0, 255, 65, 0.2)';
+            ctx.fill();
+
+            // 畫圓圈
+            ctx.strokeStyle = 'rgba(0, 255, 65, 0.1)';
+            for(let i=1; i<5; i++) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, (radius/5)*i, 0, Math.PI*2);
+                ctx.stroke();
+            }
+
+            angle += 0.05;
+            requestAnimationFrame(drawRadar);
+        }
+        drawRadar();
+
+        // 模擬數據邏輯
+        let basePrice = 29416.75;
+        function updateLive() {
+            // 模擬市場微幅跳動
+            basePrice += (Math.random() - 0.5) * 5;
+            document.getElementById('livePrice').innerText = basePrice.toLocaleString(undefined, {minimumFractionDigits: 2});
+            
+            const ath = parseFloat(document.getElementById('athInput').value);
+            const drop = ((basePrice - ath) / ath) * 100;
+            
+            document.getElementById('displayDrop').innerText = drop.toFixed(2) + "%";
+            
+            const dropCard = document.getElementById('dropCard');
+            const signal = document.getElementById('signalStatus');
+            
+            if (drop <= -4) {
+                dropCard.classList.add('critical');
+                signal.innerText = "B-2 RELOAD";
+                signal.style.color = "#ff003c";
+            } else {
+                dropCard.classList.remove('critical');
+                signal.innerText = "MONITORING";
+                signal.style.color = "#00ff41";
+            }
+            
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+        }
+        setInterval(updateLive, 1000);
+
+        function lockSystem() {
+            const val = document.getElementById('athInput').value;
+            document.getElementById('displayAth').innerText = Number(val).toLocaleString();
+        }
+    </script>
+</body>
+</html>
